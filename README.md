@@ -15,7 +15,7 @@ pip install -e .
 ```
 
 ## Usage
-The algorithm can be used by calling the `sghq(n, L, strategy="third")` function, which is available in `sghq.sghq` (yes).
+The algorithm can be used by calling the function `sghq(n, L, [strategy])`, which is available in `sghq.sghq` (yes).
 
 Some other functions are available in `sghq.sghq` - these probably won't be especially interesting (except if you want to know how things are being done). 
 
@@ -28,7 +28,7 @@ The `strategy` parameter decides the selection strategy for univariate SGHQ poin
 You can choose between the following,
 * `1` (alias `"first"`): `m = L`
 * `2` (alias `"second"`): `m = 2*L - 1` 
-* `3` (alias `"third"`):  `m = 2^L - 1`
+* `3` (alias `"third"`):  `m = 2^L - 1` (this is the default)
 * Or supply your own using a `lambda`.
 
 ### Usage in Python code:
@@ -71,7 +71,7 @@ python sghq/sghq.py sghq -h
 
 ## Tests
 
-Run supplied tests that compares algorithm output to data generated using Matlab codes by [2]:
+Run supplied tests that compares algorithm output to data generated using Matlab codes by \[[2](#reference2)\]:
 ```bash
 # in python-sghq/ folder
 pytest
