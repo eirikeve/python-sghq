@@ -1,0 +1,7 @@
+numpy
+scipy
+sympy
+# for CLI:
+fire
+# for testing:
+pytest
