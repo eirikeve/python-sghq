@@ -111,6 +111,6 @@ The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associat
 
 [GNU General Public License Version 3](LICENSE).
 
-[eve.eirik@gmail.com](mailto:eve.eirik@gmail.com)
-[https://github.com/eirikeve](https://github.com/eirikeve)
-Code available at: [https://github.com/eirikeve/python-sghq](https://github.com/eirikeve/python-sghq)
+[eve.eirik@gmail.com](mailto:eve.eirik@gmail.com)  
+[https://github.com/eirikeve](https://github.com/eirikeve)  
+Code available at: [https://github.com/eirikeve/python-sghq](https://github.com/eirikeve/python-sghq)  
