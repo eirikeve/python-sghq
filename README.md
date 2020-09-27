@@ -98,7 +98,6 @@ This can be used in nonlinear Gaussian filtering tasks to propagate Gaussian sta
 
 The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associated _1_-dimensional weights. These can approximate the integral over a function _f: n -> r in R^1_ weighted by a standard Gaussian probability density function, _N(x; 0, 1) = (1/2pi)*e^(x^2 / 2)_. The accuracy level _L_ determines to what order of polynomial _f_ the integration is accurate for. For a given _L_, integration over a polynomial _f_ of up to order _2L-1_ will be exact.
 
-
 ## References
 
 > **[1]** <a name="reference1"></a> Jia, Bin; Ming Xin; Yang Cheng. "Sparse Gauss-Hermite quadrature filter with application to spacecraft attitude estimation" Journal of Guidance, Control, and Dynamics Vol. 32, no. 2 (2011). \[[PDF](https://www.researchgate.net/publication/258837425_Sparse_Gauss-Hermite_Quadrature_Filter_with_Application_to_Spacecraft_Attitude_Estimation)\]
@@ -108,6 +107,10 @@ The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associat
 > **[3]**  <a name="reference3"></a> Julier, Simon J.; Uhlmann, Jeffrey K. "Unscented Filtering and Nonlinear Estimation" Proceedings of the IEEE, Vol. 92, no. 3 (2004). \[[PDF](https://www.cs.ubc.ca/~murphyk/Papers/Julier_Uhlmann_mar04.pdf)\]
 
  
-## License
+## License and Contact
 
 [GNU General Public License Version 3](LICENSE).
+
+[eve.eirik@gmail.com](mailto:eve.eirik@gmail.com)
+[https://github.com/eirikeve](https://github.com/eirikeve)
+Code available at: [https://github.com/eirikeve/python-sghq](https://github.com/eirikeve/python-sghq)
