@@ -96,7 +96,7 @@ It's similar to the Unscented Transform (see \[[3](#reference3)\], eq. (12)), bu
 
 This can be used in nonlinear Gaussian filtering tasks to propagate Gaussian state beliefs through nonlinear state transition functions and measurement functions, see \[[1](#reference1)\] for more in-depth information.
 
-The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associated _1_-dimensional weights. These can approximate the integral over a function _f: n -> r in R^1_ weighted by a standard Gaussian probability density function, _N(x; 0, 1) = (1/2pi)*e^(x^2 / 2)_. The accuracy level _L_ determines to what order of polynomial _f_ the integration is accurate for. For a given _L_, integration over a polynomial _f_ of up to order _2L-1_ will be exact.
+The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associated _1_-dimensional weights. These can approximate the integral over a function _f: n -> r in R^1_ weighted by a standard Gaussian probability density function, _N(x; 0, 1) = ((1/2pi)^(1/2))*e^(x^2 / 2)_. The accuracy level _L_ determines to what order of polynomial _f_ the integration is accurate for. For a given _L_, integration over a polynomial _f_ of up to order _2L-1_ will be exact.
 
 ## References
 
