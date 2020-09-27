@@ -88,7 +88,7 @@ def resolve_point_selection_strategy(strategy: Union[int, str, Callable[[int],in
         raise ValueError(f"Expected strategy to be a Callable[int, int] or one of {m_L_strategies.keys()}, but got {strategy}")
     return m_L_strategies[strategy]
 
-def form_grid(accuracy_sequence: Sequence[int], strategy_func: Callable[[int],int]) -> np.array:
+def form_grid(accuracy_sequence: Sequence[int], strategy_func: Callable[[int],int]) -> Tuple[np.array, np.array]:
     """Create a meshgrid of Gauss-Hermite quadrature points
     With accuracy along each dimension as given by the entries in accuracy_sequence.
     This implements the inner statement of [1], eq. (29), i.e. what's referred to as a tensor product sequence there.
@@ -98,8 +98,7 @@ def form_grid(accuracy_sequence: Sequence[int], strategy_func: Callable[[int],in
         strategy_func (Callable[[int],int]): Function that implements point selection strategy for the number m_L of univariate GHQ points for a given accuracy level L.
 
     Returns:
-        (np.array[None, n]): A set of n-dimensional points.
-            The coarseness of the point coordinates across the i-th dimension is given by the i-th entry in the accuracy_sequence.
+        (np.array[None, n], np.array[None,]): A set of n-dimensional points and their weights. The coarseness of the point coordinates across the i-th dimension is given by the i-th entry in the accuracy_sequence.
     """
     ms = [strategy_func(L) for L in accuracy_sequence]
     # GHQ (x, w) for all entries in the accuracy sequence.
@@ -107,8 +106,6 @@ def form_grid(accuracy_sequence: Sequence[int], strategy_func: Callable[[int],in
     points, weights = zip(*points_weights)
     points = [p.reshape(-1) for p in points]
     weights = [w.reshape(1, -1) for w in weights]
-
-
 
     dims = tuple([p.shape[-1] for p in points])
     nd = len(dims)
@@ -120,7 +117,6 @@ def form_grid(accuracy_sequence: Sequence[int], strategy_func: Callable[[int],in
     for d_idx, (pt, wt) in enumerate(zip(points, weights)):
         # Repeat the coordinates of this point along the dimensions associated with other points.
         # This handles a single X_i in the inner U of [1] eq. (29)
-
         # View the point in the nd space, along its own dimension
         shape =[1 for d in dims] + [1]
         shape[d_idx] = len(pt)
@@ -137,11 +133,8 @@ def form_grid(accuracy_sequence: Sequence[int], strategy_func: Callable[[int],in
         nd_wt_grid[..., d_idx] = repeated_1d_wt[...,0]
 
     nd_wt_grid = nd_wt_grid.reshape(-1, nd)
-
     unscaled_seq_wts= np.prod(nd_wt_grid, axis=-1)
-
     seq_grid = nd_pt_grid.reshape(-1, nd)
-
     return seq_grid, unscaled_seq_wts
 
 def scale_weights(weights: np.array, L: int, q: int, n: int):

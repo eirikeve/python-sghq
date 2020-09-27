@@ -34,7 +34,7 @@ import pytest
 
 import numpy as np
 
-from sghq import sghq, sparsify_numerical_rule
+from sghq.sghq import sghq, sparsify_numerical_rule
 
 def find_test_data(n, L):
     """Find the csv file for this case under data/
