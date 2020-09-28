@@ -108,6 +108,7 @@ It's similar to the Unscented Transform (see \[[3](#reference3)\], eq. (12)), bu
 
 The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associated _1_-dimensional weights. These can approximate the integral over a function _f: n -> m_ weighted by a standard multivariate Gaussian , _X ~ N(x; 0, I)_. The _n_ random variables in _X_ are i.i.d. _xi ~(1/2pi)^(1/2) * e^(xi^2 / 2)_. The accuracy level _L_ determines to what order of polynomial _f_ the integration is accurate for. For a given _L_, integration over a polynomial _f_ of up to order _2L-1_ will be exact.  
 
+
 Any multivariate Gaussian can be expressed in terms of a standard multivariate Gaussian  and an affine transformation (see e.g. \[[1](#reference1)\], eq. (23)). This means that the SGHQ rule can be applied for any (non-degenerate) multivariate Gaussian. This makes it suitable for nonlinear Gaussian filtering tasks - see e.g. \[[1](#reference1)\] or \[[2](#reference1)\] for more in-depth information.
 
 ## References
