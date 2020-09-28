@@ -1,4 +1,4 @@
-"""tests/test_sghq.py
+"""tests/test_quadrature.py
 Tests for sparse Gauss-Hermite Quadrature rule - Python implementation
 Copyright (C) 2020 Eirik Ekjord Vesterkjaer
 
@@ -30,11 +30,12 @@ See README.md for more information, and LICENSE for the license.
 
 from pathlib import Path
 from typing import Tuple
-import pytest
 
 import numpy as np
+import pytest
 
-from sghq.sghq import sghq, sparsify_numerical_rule
+from sghq.quadrature import sghq
+from sghq.smolyak import sparsify_numerical_rule
 
 def find_test_data(n, L):
     """Find the csv file for this case under data/
@@ -80,7 +81,7 @@ def preprocess_data_so_tests_are_sane(X_m, W_m, X_py, W_py):
 
 @pytest.mark.parametrize("n", range(1, 7))
 @pytest.mark.parametrize("L", range(1, 6))
-def test_against_MATLAB_implementation(n, L):
+def test_sghq_against_MATLAB_implementation(n, L):
     X_m, W_m = find_test_data(n, L)
     X_m, W_m = sparsify_numerical_rule(X_m, W_m)
 
