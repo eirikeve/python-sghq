@@ -1,7 +1,7 @@
 sparse Gauss-Hermite Quadrature python implementation
 # python-sghq
 
-Python-implementation of the sparse Gauss-Hermite quadrature (SGHQ) algorithm. The SGHQ isbased on Smolyak's sparse grid method. The algorithm is used to obtain a numerical rule that approximates integrals over functions with Gaussian kernels.
+Python-implementation of the sparse Gauss-Hermite quadrature (SGHQ) algorithm. The SGHQ is based on Smolyak's sparse grid method. The algorithm is used to obtain a numerical rule that approximates integrals over functions with Gaussian kernels.
 
 ## Installation
 Code available at [https://github.com/eirikeve/python-sghq](https://github.com/eirikeve/python-sghq).
