@@ -77,7 +77,7 @@ def resolve_point_selection_func(strategy: Union[int, str, Callable[[int],int]])
         raise ValueError(f"Expected strategy to be a Callable[int, int] or one of {m_L_strategies.keys()}, but got {strategy}")
     return m_L_strategies[strategy]
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=128)
 def ghq(m: int) -> Tuple[np.ndarray, np.ndarray]:
     """Gauss-Hermite quadrature with m evaluation points, for weighting function (1/2pi)^(1/2) e^(x^2 / 2)
     Can accurately propagate Gaussian uncertainties through polynomial transfer functions of deg <= 2,m-1

@@ -147,17 +147,29 @@ def scale_weights(weights: np.array, L: int, q: int, n: int):
     C = binom(n-1, L-1-q)
     return (-1)**(L - 1 - q) * C * weights
 
-def sparsify_numerical_rule(points: np.array, weights: np.array):
+def sparsify_numerical_rule(points: np.array, weights: np.array) -> Tuple[np.array, np.array]:
     """Merges duplicate points, and sums their associated weights
+
+    Args:
+        points (np.array[None, n]): array of n-dimensional quadrature rule points - possibly with duplicates.
+        weights (np.array[None]): array of quadrature rule weights associated with the points.
+
+    Returns:
+        (np.array[None, n], np.array[None]): Sparse grid, without duplicate points. The weights have been updated to account for points that are merged.
     """
-    sparse_grid, new_idcs = np.unique(points, return_inverse=True, axis=0)
+    # This is the bottleneck of the algorithm, didn't find any good alternatives
+    sparse_points, new_idcs = np.unique(points, return_inverse=True, axis=0)
     old_idcs = np.arange(new_idcs.shape[0])
-    # This is a bit clumsy, but at least it's vecorized
-    weight_map = np.zeros((sparse_grid.shape[0], points.shape[0]), dtype=weights.dtype)
-    # Represent the summation of weights as a matrix multiplication
-    weight_map[new_idcs, old_idcs] = 1
-    sparse_weights = weight_map @ weights
-    return sparse_grid, sparse_weights
+    ones = np.ones_like(new_idcs)
+    # Using a dense matrix here leads to a memory usage explosion
+    # as the number of (dense) points grows very rapidly.
+    # for small numbers of points this might be a bit slower, but in those cases
+    # the algorithm is pretty fast anyways.
+    weight_map = coo_matrix((ones, (new_idcs, old_idcs)),
+                            shape=(sparse_points.shape[0], points.shape[0]))
+    sparse_weights = weight_map.dot(weights)
+
+    return sparse_points, sparse_weights
 
 def accuracy_level_combinations(n: int, q: int):
     """ Returns the set of sequences [i_1, ...] whose entries i_j sum to q and that are all of length <= n
@@ -198,8 +210,9 @@ def accuracy_level_combinations(n: int, q: int):
     return  _accuracy_level_combinations_impl(n, q)
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=256)
 def _accuracy_level_combinations_impl(n: int, q: int):
+    """See accuracy_level_combinations"""
     idcs = set()
     for k in range(q, 0, -1):
         if k == q:
