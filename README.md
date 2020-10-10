@@ -15,10 +15,11 @@ pip install -e .
 ```
 
 ## Usage
-The SGHQ algorithm can be used by calling the function `X, W = sghq(n, L, [strategy])`, which is available in `sghq.quadrature`.
+The SGHQ algorithm can be used by calling the function `X, W = sghq(n, L, [strategy])`, which is available in `sghq.quadrature`.  
+
 This yields evaluation points and weights for integration weighted by a _N(0, I)_ multivariate standard Gaussian.  They can be used similarly to the points and weights of the Unscented Transform, by first transforming them to match the multivatiate Gaussian you want to integrate over - see \[[1](#reference1)\].  
 
-**Arguments:**  
+**`sghq` arguments:**  
 - `n`: dimensionality of the grid points. E.g., for a 3-d state space, use `n=3`.
 - `L`: accuracy level of the integration. The result will be exact for polynomials of order `<= 2L-1`.
 - `strategy`: the selection strategy for univariate GHQ points for a given accuracy `L`. This has an impact on the total number of points in the sparse grid. You can choose between the following,
@@ -30,8 +31,12 @@ This yields evaluation points and weights for integration weighted by a _N(0, I)
 The paper \[[1](#reference1)\], section (VI.C) indicates that the algorithm might be less sensitive to the `strategy` for larger values of `L`.
 
 
-Some other functions are available in `sghq.smolyak` - e.g. `sparse_grid` which can be used to create sparse numerical rules based on other quadratures. `sqhq.quadrature.sghq` just wraps `sghq.smolyak.sparse_grid` with the Gauss-Hermite quadrature.
+Some other functions are available in `sghq.smolyak` - e.g. `sparse_grid` which can be used to create sparse numerical rules based on other quadratures (`sqhq.quadrature.sghq` just wraps `sghq.smolyak.sparse_grid` with the Gauss-Hermite quadrature.)
 
+**`sparse_grid` arguments:**  
+- `n`: dimensionality, see `sghq`  
+- `L`: accuracy level, see `sghq`  
+- `quadrature`: callable univariate quadrature rule  `(x, w) = quadrature(L)`. E.g. a quadrature rule from `scipy.special`
 
 ### Python example:
 
@@ -95,7 +100,7 @@ pytest
 
 ## About 
 
-This implementation is based on the papers \[[1](#reference1)\] and \[[3](#reference3)\]
+This implementation is based on the papers \[[1](#reference1)\] and \[[3](#reference3)\].
 The Matlab implementation \[[2](#reference2)\] of \[[1](#reference1)\] by Bin Jia (one of the authors) was also used as a reference, but primarily for debugging and comparing results. The test data was generated using that code.
 
 I implemented this because I couldn't locate an existing implementation of the SGHQ for Python, and failed to get a Matlab-to-Python transpiler working.
@@ -110,7 +115,7 @@ It's similar to the Unscented Transform, but can support higher levels of accura
 The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associated _1_-dimensional weights. These can approximate the integral over a function _f: n -> m_ weighted by a standard multivariate Gaussian , _X ~ N(x; 0, I)_. The _n_ random variables in _X_ are i.i.d. _xi ~(1/2pi)^(1/2) * e^(xi^2 / 2)_. The accuracy level _L_ determines to what order of polynomial _f_ the integration is accurate for. For a given _L_, integration over a polynomial _f_ of up to order _2L-1_ will be exact.  
 
 
-Any multivariate Gaussian can be expressed in terms of a standard multivariate Gaussian  and an affine transformation (see e.g. \[[1](#reference1)\], eq. (23)). This means that the SGHQ rule can be applied for any (non-degenerate) multivariate Gaussian. This makes it suitable for nonlinear Gaussian filtering tasks - see e.g. \[[1](#reference1)\] or \[[2](#reference1)\] for more in-depth information.
+Any multivariate Gaussian can be expressed in terms of a standard multivariate Gaussian  and an affine transformation (see e.g. \[[1](#reference1)\], eq. (23)). This means that the SGHQ rule can be applied for any (non-degenerate) multivariate Gaussian. This makes it suitable for nonlinear Gaussian filtering tasks - see e.g. \[[1](#reference1)\].
 
 ## References
 
@@ -119,7 +124,7 @@ Any multivariate Gaussian can be expressed in terms of a standard multivariate G
 > **[2]**  <a name="reference2"></a> Jia, Bin (binjiaqm). "Sparse Gauss-Hermite Quadrature rule". GitHub repository with Matlab code (commit 4afe0bc). \[[Repo](https://github.com/binjiaqm/sparse-Gauss-Hermite-quadrature-rule)\]
 
 
-> **[3]** <a name="reference3"></a> Heiss, Florian, and Viktor Winschel. "Likelihood approximation by numerical integration on sparse grids." Journal of Econometrics 144.1 (2008). \[[PDF](https://hal.archives-ouvertes.fr/hal-00501810/)\]
+> **[3]** <a name="reference3"></a> Heiss, Florian; Viktor Winschel. "Likelihood approximation by numerical integration on sparse grids." Journal of Econometrics 144.1 (2008). \[[PDF](https://hal.archives-ouvertes.fr/hal-00501810/)\]
  
 ## License and Contact
 

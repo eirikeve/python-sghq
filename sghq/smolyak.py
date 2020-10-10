@@ -85,7 +85,7 @@ def N(n: int, q: int) -> Sequence[Tuple]:
     # prepare for [1], eq. (27). Get e.g. [(2,), (1,1)]
     accuracy_tuples = accuracy_level_combinations(n, q)
     # [(2,), (1,1)] -> [ [3, 1, ...], [2, 2, 1, ...] ]
-    accuracy_seq_bases = expand_to_length(accuracy_tuples, n)
+    accuracy_seq_bases = expand_and_increment(accuracy_tuples, n, increment_val=1)
     # [1] eq. (27). [3, 1, ...] -> {[3,1, ...], [1, 3, ...], ...}, for each entry in the accuracy_tuples list
     # Xi is the weird square character used in [1] eq. (27)
     Xis = [multiset_permutations(seq) for seq in accuracy_seq_bases]
@@ -240,20 +240,26 @@ def _accuracy_level_combinations_impl(n: int, q: int):
         idcs = idcs | new
     return sorted(idcs, reverse=True)
 
-def expand_to_length(tuples: Sequence[Tuple], n: int, fill=1) -> List[Tuple]:
-    """Right-pads all entries in the sequence with fill such that they are of length n
+def expand_and_increment(tuples: Sequence[Tuple], n: int, increment_val=1) -> List[Tuple]:
+    """Extends tuples to length n, and increments their entries by increment_val
+    New entries will have value increment_val
+
+    Example:
+        n =4  and increment_val = 1:
+        [(2,), (1,1)] -> [ [3, 1, 1, 1], [2, 2, 1, 1] ]
 
     Args:
         tuples (Sequence[Tuple])
         n (int): length to expand tuples to
+        increment_val (int): value of new entries, that is also added to existing entries
 
     Returns:
-        List[Tuple]: Input tuples, but right padded with fill
+        List[Tuple]: Input tuples, but expanded to be of length n and with valued incremented by fill
 
     """
     return [
         tuple(
-            [num + fill for num in tup] + [fill for i in range( n - len(tup) )]
+            [num + increment_val for num in tup] + [increment_val for i in range( n - len(tup) )]
         )
         for tup in tuples
     ]
