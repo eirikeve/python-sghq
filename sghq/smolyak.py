@@ -114,7 +114,7 @@ def form_grid(accuracy_sequence: Sequence[int],
 
     Args:
         accuracy_sequence (Sequence[int]): A sequence of n levels of accuracy, each indicating the accuracy of a Gauss-Hermite rule alonng a dimension.
-        strategy_func (Callable[[int],int]): Function that implements point selection strategy for the number m_L of univariate quadrature points for a given accuracy level L.
+        quadrature (Callable[[int], (np.array, np.array)]): Function that implements a quadrature rule mapping an accuracy level L to the quadrature (points, weights)
 
     Returns:
         (np.array[None, n], np.array[None,]): A set of n-dimensional points and their weights. The coarseness of the point coordinates across the i-th dimension is given by the i-th entry in the accuracy_sequence.
