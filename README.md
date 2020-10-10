@@ -95,7 +95,7 @@ pytest
 
 ## About 
 
-This implementation is based on the papers \[[1](#reference1)\] and \[3](#reference3)[\]
+This implementation is based on the papers \[[1](#reference1)\] and \[[3](#reference3)\]
 The Matlab implementation \[[2](#reference2)\] of \[[1](#reference1)\] by Bin Jia (one of the authors) was also used as a reference, but primarily for debugging and comparing results. The test data was generated using that code.
 
 I implemented this because I couldn't locate an existing implementation of the SGHQ for Python, and failed to get a Matlab-to-Python transpiler working.
