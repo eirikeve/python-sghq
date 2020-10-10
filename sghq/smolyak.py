@@ -64,8 +64,7 @@ def sparse_grid(n: int, L: int,
     """
     chi, W = [], []
     for q in range(L-n, L):
-        Nn_q = N(n, q)
-        for Xi in Nn_q:
+        for Xi in N(n, q):
             pts, unscaled_wts = form_grid(Xi, quadrature)
             wts = scale_weights(unscaled_wts, L, q, n)
             chi.append(pts)
