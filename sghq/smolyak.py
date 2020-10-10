@@ -29,6 +29,10 @@ Sources:
         https://github.com/binjiaqm/sparse-Gauss-Hermite-quadrature-rule
         GitHub repository, Matlab code (commit 4afe0bc)
 
+    [3] Heiss, Florian, and Viktor Winschel.
+        "Likelihood approximation by numerical integration on sparse grids."
+        Journal of Econometrics 144.1 (2008): 62-80.
+
 See README.md for more information, and LICENSE for the license.
 """
 
@@ -39,14 +43,16 @@ from typing import Callable, List, Tuple, Sequence, Union
 
 import numpy as np
 
+from scipy.sparse import coo_matrix
 from scipy.special import binom
-from sympy.utilities.iterables import multiset_permutations, multiset
+from sympy.utilities.iterables import multiset_permutations
 
-def sparse_grid(n: int, L: int, quadrature: Callable[[int], Tuple[np.array, np.array]]) -> Tuple[np.array, np.array]:
+def sparse_grid(n: int, L: int,
+                quadrature: Callable[[int], Tuple[np.array, np.array]]
+                ) -> Tuple[np.array, np.array]:
     """Smolyak's rule for n-d sparse-grid numerical integration based on a 1-d quadrature rule
-    This implementation is based on the approach used in [1] and [2].
-    Instead of recursively formulating the tensor products,
-    it iteratively forms the resulting grids and merge duplicate points at the end.
+    For numerical integration
+    This implementation is based on [1], [2] and [3]
 
     Args:
         n (int): Dimensionality of the grid points.
@@ -60,7 +66,6 @@ def sparse_grid(n: int, L: int, quadrature: Callable[[int], Tuple[np.array, np.a
     for q in range(L-n, L):
         Nn_q = N(n, q)
         for Xi in Nn_q:
-            # Make a
             pts, unscaled_wts = form_grid(Xi, quadrature)
             wts = scale_weights(unscaled_wts, L, q, n)
             chi.append(pts)
@@ -68,9 +73,7 @@ def sparse_grid(n: int, L: int, quadrature: Callable[[int], Tuple[np.array, np.a
     chi, W = np.concatenate(chi, axis=0), np.concatenate(W, axis=0)
     return sparsify_numerical_rule(chi, W)
 
-
-@lru_cache(maxsize=16)
-def N(n: int, q: int):
+def N(n: int, q: int) -> Sequence[Tuple]:
     """Constructs a set of accuracy level sequences, as given by [1] eq. (27)
 
     Args:
@@ -78,43 +81,53 @@ def N(n: int, q: int):
         q (int): [description]
 
     Returns:
-        np.array: (None, n) array, where n is the input n and the first dimension is the size
+        Sequence[Tuple]: tuples of lengths n, each corresponding to an accuracy sequence for n dimensions of the integration
     """
     # prepare for [1], eq. (27). Get e.g. [(2,), (1,1)]
     accuracy_tuples = accuracy_level_combinations(n, q)
     # [(2,), (1,1)] -> [ [3, 1, ...], [2, 2, 1, ...] ]
-    accuracy_seq_bases = expand_to_arrays(accuracy_tuples, n)
+    accuracy_seq_bases = expand_to_length(accuracy_tuples, n)
     # [1] eq. (27). [3, 1, ...] -> {[3,1, ...], [1, 3, ...], ...}, for each entry in the accuracy_tuples list
     # Xi is the weird square character used in [1] eq. (27)
     Xis = [multiset_permutations(seq) for seq in accuracy_seq_bases]
-    # it's more practical to represent this as a np array.
-    # as the array is nested, np.fromiter didn't seem to work.
-    Nn_q = np.array(list(chain.from_iterable(Xis)), dtype=int)
+    Nn_q = chain.from_iterable(Xis)
     return Nn_q
 
-
-def form_grid(accuracy_sequence: Sequence[int], quadrature: Callable[[int], Tuple[np.array, np.array]]) -> Tuple[np.array, np.array]:
+def form_grid(accuracy_sequence: Sequence[int],
+              quadrature: Callable[[int], Tuple[np.array, np.array]]
+              ) -> Tuple[np.array, np.array]:
     """Create a dense grid of quadrature points
     With accuracy along each dimension as given by the entries in accuracy_sequence.
     This implements the inner statement of [1], eq. (29), i.e. what's referred to as a tensor product sequence there.
 
+    [3], eq. (6) is important for understanding this part. They define the tensor product of uv quadrature rules as,
+
+    (V_{i_1} ⊗ ...  ⊗ V_{i_n})[f] = Σ_{x1 in X_{i,1}} ... Σ_{xn in X_{i,n}} f(x1, ..., xn) Π_{d = 1}^D w_{i_d}
+
+    So this means that what [1] and [3] call a tensor product sequence of points and weights isn't a normal tensor product:
+    It's just all the combinations of all individual quadrature points along their respective dimension (which are given by the index / position of the quadrature rule in the "tensor product").
+    Knowing this, we can see that the point grid (X_1 ⊗ ... ⊗ X_n) can be expressed pretty easily,
+    by simply repeating each X_i along all of the other quadrature rules' dimensions (which gives a (L_1, L_2, ..., L_n) tensor of 1d points )
+    and assigning this resulting point sequence to the corresponding index of the last dimension resulting point set.
+    The point set is a (L_1, L_2, ..., L_n, n) tensor, which is afterwards reshaped to (-1, n).
+    The same goes for the weights - just that the last dimension of the tensor is reduced to the product of its entries.
+
     Args:
         accuracy_sequence (Sequence[int]): A sequence of n levels of accuracy, each indicating the accuracy of a Gauss-Hermite rule alonng a dimension.
-        strategy_func (Callable[[int],int]): Function that implements point selection strategy for the number m_L of univariate GHQ points for a given accuracy level L.
+        strategy_func (Callable[[int],int]): Function that implements point selection strategy for the number m_L of univariate quadrature points for a given accuracy level L.
 
     Returns:
         (np.array[None, n], np.array[None,]): A set of n-dimensional points and their weights. The coarseness of the point coordinates across the i-th dimension is given by the i-th entry in the accuracy_sequence.
     """
-
-    points_weights = [quadrature( L ) for L in accuracy_sequence]
+    points_weights = [ quadrature(L) for L in accuracy_sequence ]
     points, weights = zip(*points_weights)
     points = [p.reshape(-1) for p in points]
     weights = [w.reshape(-1) for w in weights]
 
     dims = tuple([p.shape[-1] for p in points])
     nd = len(dims)
-    # This follows the approach used in [1], [2] for expressing the tensor products in Smolyak's rule
-    # I'd refer to it as making a high-dimensional meshgrid.
+    # This follows the approach used in [1], [2], [3] for expressing the tensor products in Smolyak's rule
+    # I'd refer to it as making a high-dimensional meshgrid, not a tensor product.
     # This part took a lot of time to understand
     nd_pt_grid = np.zeros( dims + (nd,) )
     nd_wt_grid = np.zeros( dims + (nd,) )
@@ -122,27 +135,29 @@ def form_grid(accuracy_sequence: Sequence[int], quadrature: Callable[[int], Tupl
         # Repeat the coordinates of this point along the dimensions associated with other points.
         # This handles a single X_i in the inner U of [1] eq. (29)
         # View the point in the nd space, along its own dimension
-        shape =[1 for d in dims] + [1]
+        shape =[1 for d in dims]
         shape[d_idx] = len(pt)
         pt = pt.reshape(shape)
         wt = wt.reshape(shape)
 
         # Tile the point along the oher other dimensions
-        repeat_counts = dims[:d_idx] + (1,) + dims[d_idx+1:] + (1,)
+        repeat_counts = dims[:d_idx] + (1,) + dims[d_idx+1:]
         repeated_1d_pt = np.tile(pt, repeat_counts)
         repeated_1d_wt = np.tile(wt, repeat_counts)
 
-        # The i-th dimension of the sparse grid quadrature contains the coordinates of the associated univariate quadrature points, the number of which (L) is given by the corresponding accuracy sequence (Xi) entry
-        nd_pt_grid[..., d_idx] = repeated_1d_pt[...,0]
-        nd_wt_grid[..., d_idx] = repeated_1d_wt[...,0]
+        # The i-th dimension of the grid from this accuracy sequence consists of the coordinates of the associated univariate quadrature points, the number of which (L) is given by the corresponding accuracy sequence (Xi) entry
+        nd_pt_grid[..., d_idx] = repeated_1d_pt
+        nd_wt_grid[..., d_idx] = repeated_1d_wt
 
     nd_wt_grid = nd_wt_grid.reshape(-1, nd)
     unscaled_seq_wts= np.prod(nd_wt_grid, axis=-1)
     seq_grid = nd_pt_grid.reshape(-1, nd)
     return seq_grid, unscaled_seq_wts
 
-def scale_weights(weights: np.array, L: int, q: int, n: int):
+def scale_weights(weights: np.array, L: int, q: int, n: int) -> np.array:
     """ Implements everything before the Prod in [1] eq. (30)
+    This weight scaling lets us express the sparse grid as a summation over univariate quadrature rules,
+    Instead of as a summation over their differences. See [3], eq. (10)
     """
     C = binom(n-1, L-1-q)
     return (-1)**(L - 1 - q) * C * weights
@@ -179,14 +194,13 @@ def accuracy_level_combinations(n: int, q: int):
     This function finds all the unique combinations which can be used to describe the unique orderings of the first array,
 
     Args:
-        q (int): [description]
-        n (int): [description]
+        q (int): Integer > 0, ceiling for the accuracy in the sequences
+        n (int): Integer > 1, max number of points in each sequence
 
     Returns:
-        [type]: [description]
+        [type]: Set of unique k-dimensional sequences (k < n) whose entries sum to q
 
     Examples:
-        ```python
         # For q = 0 and n >= 1 the return value will be
         [(0,)]
         # For q = 1 and n >= 1 the return value will be
@@ -197,7 +211,6 @@ def accuracy_level_combinations(n: int, q: int):
         [(3,), (2, 1), (1, 1, 1)]
         # for q = 3 and n == 2 the return value will be
         [(3,), (2, 1)]
-        ```
     """
     if not type(q) is int or not type(n) is int:
         raise ValueError(f"Expected type {int} for d and n but but got type(q)={type(q)} and type(n)={type(n)}")
@@ -223,15 +236,24 @@ def _accuracy_level_combinations_impl(n: int, q: int):
             for entry in _accuracy_level_combinations_impl(n, q-k)
             if len(entry) < n
         )
-        # this is useful, try accuracy_level_permutations(3, 3) with/without the line to see why
+        # this is useful, try accuracy_level_combinations(3, 3) with/without the line to see why
         new = set( ( tuple(sorted(entry, reverse=True)) for entry in new ) )
         idcs = idcs | new
     return sorted(idcs, reverse=True)
 
-def expand_to_arrays(tuples: Sequence[Tuple], n: int):
-    fill = 1
+def expand_to_length(tuples: Sequence[Tuple], n: int, fill=1) -> List[Tuple]:
+    """Right-pads all entries in the sequence with fill such that they are of length n
+
+    Args:
+        tuples (Sequence[Tuple])
+        n (int): length to expand tuples to
+
+    Returns:
+        List[Tuple]: Input tuples, but right padded with fill
+
+    """
     return [
-        np.array(
+        tuple(
             [num + fill for num in tup] + [fill for i in range( n - len(tup) )]
         )
         for tup in tuples

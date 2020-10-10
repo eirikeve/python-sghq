@@ -15,23 +15,24 @@ pip install -e .
 ```
 
 ## Usage
-The algorithm can be used by calling the function `sghq(n, L, [strategy])`, which is available in `sghq.quadrature`.
+The algorithm can be used by calling the function `sghq(n, L, [strategy])`, which is available in `sghq.quadrature`. This yields evaluation points and weights for integration weighted by a _N(0, I)_ multivariate standard Gaussian. They can be used similarly to the points and weights of the Unscented Transform, by first transforming them to match the multivatiate Gaussian you want to integrate over - see \[[1](#reference1)\].
+**Arguments:**  
+- `n`: dimensionality of the grid points. E.g., for a 3-d state space, use `n=3`.
+- `L`: accuracy level of the integration. The result will be exact for polynomials of order `<= 2L-1`.
+- `strategy`: the selection strategy for univariate GHQ points for a given accuracy `L`. This has an impact on the total number of points in the sparse grid. You can choose between the following,
+  - `1` (alias `"first"`): `m = L`
+  - `2` (alias `"second"`): `m = 2*L - 1` (this is the default)
+  - `3` (alias `"third"`):  `m = 2^L - 1` 
+  -  or supply your own using a `lambda`.
 
-The `n` parameter is the dimensionality of the grid points. E.g., for a 3-d state space, use `n=3`.
+The paper \[[1](#reference1)\], section (VI.C) indicates that the algorithm might be less sensitive to the `strategy` for larger values of `L`.
 
-The `L` parameter decides how accurate the integration is. The result will be exact for polynomials of order `<= 2L-1`.
-
-The `strategy` parameter decides the selection strategy for univariate GHQ points for a given accuracy L. The paper \[[1](#reference1)\] seems to mostly use the third variant. This has an impact on the total number of points in the sparse grid.
-You can choose between the following,
-* `1` (alias `"first"`): `m = L`
-* `2` (alias `"second"`): `m = 2*L - 1` 
-* `3` (alias `"third"`):  `m = 2^L - 1` (this is the default)
-* Or supply your own using a `lambda`.
 
 Some other functions are available in `sghq.smolyak` - e.g. `sparse_grid` which can be used to create sparse numerical rules based on other quadratures. `sqhq.quadrature.sghq` just wraps `sghq.smolyak.sparse_grid` with the Gauss-Hermite quadrature.
 
 
 ### Python example:
+
 ```python
 > python
 >>> import sghq.quadrature as quad
@@ -92,19 +93,17 @@ pytest
 
 ## About 
 
-This implementation is based on the paper \[[1](#reference1)\].
+This implementation is based on the papers \[[1](#reference1)\] and \[3](#reference3)[\]
 The Matlab implementation \[[2](#reference2)\] of \[[1](#reference1)\] by Bin Jia (one of the authors) was also used as a reference, but primarily for debugging and comparing results. The test data was generated using that code.
 
 I implemented this because I couldn't locate an existing implementation of the SGHQ for Python, and failed to get a Matlab-to-Python transpiler working.
 
-It appears to run at least as fast as the Matlab implementation \[[2](#reference2)\] (though I tested it using Octave - so I'm not sure about how that extrapolates to Matlab). For the tests I've ran it yields identical results to those codes.
-
-Still: No guarantees on the code efficiency or algorithm correctness :)
+It appears to run at least as fast as the Matlab implementation \[[2](#reference2)\] (though I tested \[[2](#reference2)\] using Octave - so I'm not sure about how that extrapolates to Matlab). For the tests I've ran it yields identical results to those codes.
 
 ### Theory
 The SGHQ is a numerical rule that can be used for integrating functions with a Gaussian kernel.
 
-It's similar to the Unscented Transform (see \[[3](#reference3)\], eq. (12)), but can support higher levels of accuracy (though at a higher computational cost, and still under the assumption of Gaussian uncertainties).  
+It's similar to the Unscented Transform, but can support higher levels of accuracy (though at a higher computational cost, though still under the assumption of Gaussian uncertainties).  
 
 The SGHQ(_n_, _L_) alorithm creates a set of _n_-dimensional points and associated _1_-dimensional weights. These can approximate the integral over a function _f: n -> m_ weighted by a standard multivariate Gaussian , _X ~ N(x; 0, I)_. The _n_ random variables in _X_ are i.i.d. _xi ~(1/2pi)^(1/2) * e^(xi^2 / 2)_. The accuracy level _L_ determines to what order of polynomial _f_ the integration is accurate for. For a given _L_, integration over a polynomial _f_ of up to order _2L-1_ will be exact.  
 
@@ -117,8 +116,8 @@ Any multivariate Gaussian can be expressed in terms of a standard multivariate G
 
 > **[2]**  <a name="reference2"></a> Jia, Bin (binjiaqm). "Sparse Gauss-Hermite Quadrature rule". GitHub repository with Matlab code (commit 4afe0bc). \[[Repo](https://github.com/binjiaqm/sparse-Gauss-Hermite-quadrature-rule)\]
 
-> **[3]**  <a name="reference3"></a> Julier, Simon J.; Uhlmann, Jeffrey K. "Unscented Filtering and Nonlinear Estimation" Proceedings of the IEEE, Vol. 92, no. 3 (2004). \[[PDF](https://www.cs.ubc.ca/~murphyk/Papers/Julier_Uhlmann_mar04.pdf)\]
 
+> **[3]** <a name="reference3"></a> Heiss, Florian, and Viktor Winschel. "Likelihood approximation by numerical integration on sparse grids." Journal of Econometrics 144.1 (2008). \[[PDF](https://hal.archives-ouvertes.fr/hal-00501810/)\]
  
 ## License and Contact
 

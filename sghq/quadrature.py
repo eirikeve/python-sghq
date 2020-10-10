@@ -40,7 +40,7 @@ from scipy.special import roots_hermitenorm
 
 from sghq.smolyak import sparse_grid
 
-def sghq(n: int, L: int, strategy: Union[int, str, Callable[[int],int]]="third") -> Tuple[np.ndarray, np.ndarray]:
+def sghq(n: int, L: int, strategy: Union[int, str, Callable[[int],int]]="second") -> Tuple[np.ndarray, np.ndarray]:
     """Sparse Gauss-Hermite Quadrature implementation
 
     Args:
@@ -58,7 +58,7 @@ def sghq(n: int, L: int, strategy: Union[int, str, Callable[[int],int]]="third")
     return sparse_grid(n, L, ghq_with_strategy)
 
 
-def resolve_point_selection_func(strategy: Union[int, str, Callable[[int],int]]):
+def resolve_point_selection_func(strategy: Union[int, str, Callable[[int],int]]) -> Callable[[int],int]:
     """Point selection strategy to choose the number of univariate GHQ points for a given accuracy level.
     This corresponds to m_L in [1], Table (1).
     """
