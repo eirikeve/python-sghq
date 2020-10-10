@@ -1,7 +1,7 @@
 sparse Gauss-Hermite Quadrature python implementation
 # python-sghq
 
-Python-implementation of the sparse Gauss-Hermite quadrature (SGHQ) algorithm. The SGHQ is based on Smolyak's sparse grid method. The algorithm is used to obtain a numerical rule that approximates integrals over functions with Gaussian kernels.
+Python implementation of Smolyak's sparse grid method \[[2](#reference2)\] and the sparse Gauss-Hermite quadrature (SGHQ) algorithm \[[1](#reference1)\]. The SGHQ algorithm is used to obtain a numerical rule that approximates integrals over functions with Gaussian kernels.
 
 ## Installation
 Code available at [https://github.com/eirikeve/python-sghq](https://github.com/eirikeve/python-sghq).
@@ -15,7 +15,8 @@ pip install -e .
 ```
 
 ## Usage
-The algorithm can be used by calling the function `sghq(n, L, [strategy])`, which is available in `sghq.quadrature`. This yields evaluation points and weights for integration weighted by a _N(0, I)_ multivariate standard Gaussian. They can be used similarly to the points and weights of the Unscented Transform, by first transforming them to match the multivatiate Gaussian you want to integrate over - see \[[1](#reference1)\].
+The SGHQ algorithm can be used by calling the function `X, W = sghq(n, L, [strategy])`, which is available in `sghq.quadrature`.
+This yields evaluation points and weights for integration weighted by a _N(0, I)_ multivariate standard Gaussian. They can be used similarly to the points and weights of the Unscented Transform, by first transforming them to match the multivatiate Gaussian you want to integrate over - see \[[1](#reference1)\].
 **Arguments:**  
 - `n`: dimensionality of the grid points. E.g., for a 3-d state space, use `n=3`.
 - `L`: accuracy level of the integration. The result will be exact for polynomials of order `<= 2L-1`.
