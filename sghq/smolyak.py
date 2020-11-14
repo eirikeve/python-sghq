@@ -38,7 +38,7 @@ See README.md for more information, and LICENSE for the license.
 
 from functools import lru_cache
 from itertools import chain
-from typing import Callable, List, Tuple, Sequence, Union
+from typing import Callable, List, Tuple, Sequence, Iterator
 
 
 import numpy as np
@@ -47,9 +47,10 @@ from scipy.sparse import coo_matrix
 from scipy.special import binom
 from sympy.utilities.iterables import multiset_permutations
 
-def sparse_grid(n: int, L: int,
-                quadrature: Callable[[int], Tuple[np.array, np.array]]
-                ) -> Tuple[np.array, np.array]:
+
+def sparse_grid(
+    n: int, L: int, quadrature: Callable[[int], Tuple[np.array, np.array]]
+) -> Tuple[np.array, np.array]:
     """Smolyak's rule for n-d sparse-grid numerical integration based on a 1-d quadrature rule
     For numerical integration
     This implementation is based on [1], [2] and [3]
@@ -63,16 +64,17 @@ def sparse_grid(n: int, L: int,
         (Tuple[np.array, np.array]): Evaluation points and weights of the sparse grid (X, W), shaped [None, n] and [None,] respectively.
     """
     chi, W = [], []
-    for q in range(L-n, L):
+    for q in range(L - n, L):
         for Xi in N(n, q):
-            pts, unscaled_wts = form_grid(Xi, quadrature)
+            pts, unscaled_wts = quadrature_tensor_product(Xi, quadrature)
             wts = scale_weights(unscaled_wts, L, q, n)
             chi.append(pts)
             W.append(wts)
     chi, W = np.concatenate(chi, axis=0), np.concatenate(W, axis=0)
     return sparsify_numerical_rule(chi, W)
 
-def N(n: int, q: int) -> Sequence[Tuple]:
+
+def N(n: int, q: int) -> Iterator[List[int]]:
     """Constructs a set of accuracy level sequences, as given by [1] eq. (27)
 
     Args:
@@ -92,9 +94,11 @@ def N(n: int, q: int) -> Sequence[Tuple]:
     Nn_q = chain.from_iterable(Xis)
     return Nn_q
 
-def form_grid(accuracy_sequence: Sequence[int],
-              quadrature: Callable[[int], Tuple[np.array, np.array]]
-              ) -> Tuple[np.array, np.array]:
+
+def quadrature_tensor_product(
+    accuracy_sequence: Sequence[int],
+    quadrature: Callable[[int], Tuple[np.array, np.array]],
+) -> Tuple[np.array, np.array]:
     """Create a dense grid of quadrature points
     With accuracy along each dimension as given by the entries in accuracy_sequence.
     This implements the inner statement of [1], eq. (29), i.e. what's referred to as a tensor product sequence there.
@@ -118,50 +122,74 @@ def form_grid(accuracy_sequence: Sequence[int],
     Returns:
         (np.array[None, n], np.array[None,]): A set of n-dimensional points and their weights. The coarseness of the point coordinates across the i-th dimension is given by the i-th entry in the accuracy_sequence.
     """
-    points_weights = [ quadrature(L) for L in accuracy_sequence ]
+    if not callable(quadrature):
+        raise ValueError(
+            f"Expected a callable quadrature rule, but {quadrature} is not callable."
+        )
+    points_weights = [quadrature(L) for L in accuracy_sequence]
+    if not all(
+        [isinstance(entry, tuple) and len(entry) == 2 for entry in points_weights]
+    ):
+        raise RuntimeError(
+            f"Quadrature rule must return a tuple of exactly 2 entries: (points, weights)"
+        )
+    # Each of the n dimensions has a number of points (+ weights) associated with it,
+    # determined by the accuracy L for that dim (given by the accuracy_sequence)
+    # points and weights are lists with these point coordinates (+ weights) for each dimension.
     points, weights = zip(*points_weights)
     points = [p.reshape(-1) for p in points]
     weights = [w.reshape(-1) for w in weights]
 
-    dims = tuple([p.shape[-1] for p in points])
-    nd = len(dims)
+    # Number of points per dim may differ from L - e.g. for the SGHQ with point selection strategy 2 or 3 [1].
+    npts_per_dim = tuple([p.shape[-1] for p in points])
+
     # This follows the approach used in [1], [2], [3] for expressing the tensor products in Smolyak's rule
     # I'd refer to it as making a high-dimensional meshgrid, not a tensor product.
-    # This part took a lot of time to understand
-    nd_pt_grid = np.zeros( dims + (nd,) )
-    nd_wt_grid = np.zeros( dims + (nd,) )
-    for d_idx, (pt, wt) in enumerate(zip(points, weights)):
-        # Repeat the coordinates of this point along the dimensions associated with other points.
-        # This handles a single X_i in the inner U of [1] eq. (29)
-        # View the point in the nd space, along its own dimension
-        shape =[1 for d in dims]
-        shape[d_idx] = len(pt)
-        pt = pt.reshape(shape)
-        wt = wt.reshape(shape)
+    # First, preallocate
+    nd = len(accuracy_sequence)
+    npts = np.prod(npts_per_dim, dtype=int)
+    nd_pt_grid = np.zeros((npts, nd))
+    nd_wt_grid = np.zeros((npts, nd))
+    # Then repeat the point coordinates for this dim along the point coords for all other dims
+    for dim in range(nd):
+        npts = npts_per_dim[dim]
+        dim_pts = points[dim]
+        dim_wts = weights[dim]
+        # Align the view of this dimensions point/weight coordinates, and the view of the grid.
+        # So we can tile the coords for this dim along the grid points for all other dims.
+        prev_dims_pts = np.prod(npts_per_dim[:dim], dtype=int)
+        next_dims_pts = np.prod(npts_per_dim[dim + 1 :], dtype=int)
+        grid_view = (prev_dims_pts, npts, next_dims_pts, nd)
+        point_view = (1, npts, 1)
+        repeat_counts = (prev_dims_pts, 1, next_dims_pts)
 
-        # Tile the point along the oher other dimensions
-        repeat_counts = dims[:d_idx] + (1,) + dims[d_idx+1:]
-        repeated_1d_pt = np.tile(pt, repeat_counts)
-        repeated_1d_wt = np.tile(wt, repeat_counts)
+        nd_pt_grid = nd_pt_grid.reshape(grid_view)
+        nd_wt_grid = nd_wt_grid.reshape(grid_view)
+        dim_pts = dim_pts.reshape(point_view)
+        dim_wts = dim_wts.reshape(point_view)
 
-        # The i-th dimension of the grid from this accuracy sequence consists of the coordinates of the associated univariate quadrature points, the number of which (L) is given by the corresponding accuracy sequence (Xi) entry
-        nd_pt_grid[..., d_idx] = repeated_1d_pt
-        nd_wt_grid[..., d_idx] = repeated_1d_wt
+        # This is like an outer product but in nd instead of 2d.
+        nd_pt_grid[..., dim] = np.tile(dim_pts, repeat_counts)
+        nd_wt_grid[..., dim] = np.tile(dim_wts, repeat_counts)
 
     nd_wt_grid = nd_wt_grid.reshape(-1, nd)
-    unscaled_seq_wts= np.prod(nd_wt_grid, axis=-1)
+    unscaled_seq_wts = np.prod(nd_wt_grid, axis=-1)
     seq_grid = nd_pt_grid.reshape(-1, nd)
     return seq_grid, unscaled_seq_wts
 
+
 def scale_weights(weights: np.array, L: int, q: int, n: int) -> np.array:
-    """ Implements everything before the Prod in [1] eq. (30)
+    """Implements everything before the Prod in [1] eq. (30)
     This weight scaling lets us express the sparse grid as a summation over univariate quadrature rules,
     Instead of as a summation over their differences. See [3], eq. (10)
     """
-    C = binom(n-1, L-1-q)
-    return (-1)**(L - 1 - q) * C * weights
+    C = binom(n - 1, L - 1 - q)
+    return (-1) ** (L - 1 - q) * C * weights
 
-def sparsify_numerical_rule(points: np.array, weights: np.array) -> Tuple[np.array, np.array]:
+
+def sparsify_numerical_rule(
+    points: np.array, weights: np.array
+) -> Tuple[np.array, np.array]:
     """Merges duplicate points, and sums their associated weights
 
     Args:
@@ -179,14 +207,16 @@ def sparsify_numerical_rule(points: np.array, weights: np.array) -> Tuple[np.arr
     # as the number of (dense) points grows very rapidly.
     # for small numbers of points this might be a bit slower, but in those cases
     # the algorithm is pretty fast anyways.
-    weight_map = coo_matrix((ones, (new_idcs, old_idcs)),
-                            shape=(sparse_points.shape[0], points.shape[0]))
+    weight_map = coo_matrix(
+        (ones, (new_idcs, old_idcs)), shape=(sparse_points.shape[0], points.shape[0])
+    )
     sparse_weights = weight_map.dot(weights)
 
     return sparse_points, sparse_weights
 
+
 def accuracy_level_combinations(n: int, q: int):
-    """ Returns the set of sequences [i_1, ...] whose entries i_j sum to q and that are all of length <= n
+    """Returns the set of sequences [i_1, ...] whose entries i_j sum to q and that are all of length <= n
     Used to implement [1] eq. (27)
     See just  below [1], eq. (30) where N_1^n is described.
     We can express it as all unique orderings of [1, 0, ..., 0] \in R^n, summed with [1, 1, ..., 1] \in R^n
@@ -212,14 +242,16 @@ def accuracy_level_combinations(n: int, q: int):
         [(3,), (2, 1)]
     """
     if not type(q) is int or not type(n) is int:
-        raise ValueError(f"Expected type {int} for d and n but but got type(q)={type(q)} and type(n)={type(n)}")
+        raise ValueError(
+            f"Expected type {int} for d and n but but got type(q)={type(q)} and type(n)={type(n)}"
+        )
     if n < 1:
         raise ValueError(f"Expexted n >= 1, but got n = {n}")
     if q < 0:
         return []
     if q == 0:
         return [(0,)]
-    return  _accuracy_level_combinations_impl(n, q)
+    return _accuracy_level_combinations_impl(n, q)
 
 
 @lru_cache(maxsize=256)
@@ -228,19 +260,22 @@ def _accuracy_level_combinations_impl(n: int, q: int):
     idcs = set()
     for k in range(q, 0, -1):
         if k == q:
-            idcs.add( (q,) )
+            idcs.add((q,))
             continue
         new = set(
             (k,) + entry
-            for entry in _accuracy_level_combinations_impl(n, q-k)
+            for entry in _accuracy_level_combinations_impl(n, q - k)
             if len(entry) < n
         )
         # this is useful, try accuracy_level_combinations(3, 3) with/without the line to see why
-        new = set( ( tuple(sorted(entry, reverse=True)) for entry in new ) )
+        new = set((tuple(sorted(entry, reverse=True)) for entry in new))
         idcs = idcs | new
     return sorted(idcs, reverse=True)
 
-def expand_and_increment(tuples: Sequence[Tuple], n: int, increment_val=1) -> List[Tuple]:
+
+def expand_and_increment(
+    tuples: Sequence[Tuple], n: int, increment_val=1
+) -> List[Tuple]:
     """Extends tuples to length n, and increments their entries by increment_val
     New entries will have value increment_val
 
@@ -259,14 +294,17 @@ def expand_and_increment(tuples: Sequence[Tuple], n: int, increment_val=1) -> Li
     """
     return [
         tuple(
-            [num + increment_val for num in tup] + [increment_val for i in range( n - len(tup) )]
+            [num + increment_val for num in tup]
+            + [increment_val for i in range(n - len(tup))]
         )
         for tup in tuples
     ]
 
+
 if __name__ == "__main__":
     try:
         import fire
+
         notice = """sghq.smolyak  Copyright (C) 2020 Eirik Ekjord Vesterkjaer
 This program comes with ABSOLUTELY NO WARRANTY;
 for details see the GPL-3 License: https://www.gnu.org/licenses/gpl-3.0
@@ -276,4 +314,6 @@ for details see the GPL-3 License: https://www.gnu.org/licenses/gpl-3.0
         print(notice)
         fire.Fire()
     except ModuleNotFoundError:
-        print("run\n\npip install fire\n\nor\n\nconda install -c conda-forge fire\n\nto use the CLI")
+        print(
+            "run\n\npip install fire\n\nor\n\nconda install -c conda-forge fire\n\nto use the CLI"
+        )
